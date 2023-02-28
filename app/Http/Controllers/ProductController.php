@@ -32,8 +32,8 @@ class ProductController extends Controller
 
         $product = Product::create($data);
 
-//        $user = User::find($request->get('created_by'));
-//        Mail::to($user->email)->send(new NewProductEmail($user));
+        $user = User::find($request->get('created_by'));
+        Mail::to($user->email)->send(new NewProductEmail($user));
 
         return json_encode(['data' => $product]);
 
