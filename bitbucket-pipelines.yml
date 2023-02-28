@@ -1,0 +1,39 @@
+image: php:8.0.6-fpm
+pipelines:
+  pull-requests: #Run when pull requests are created or updated
+    '**': #this runs as default for any branch not elsewhere defined
+      - step:
+          name: Npm, Composer and testing
+          caches:
+            - composer
+            - node
+          script:
+            #- while true; do echo "Memory usage in megabytes:" && echo $((`cat /sys/fs/cgroup/memory/memory.memsw.usage_in_bytes | awk '{print $1}'`/1048576)) && sleep 0.1; done & # Monitor container memoery usage
+            - echo "memory_limit = 512M" > $PHP_INI_DIR/conf.d/php-memory-limits.ini
+            - curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.32.0/install.sh | bash # Download and Install NVM
+            - . ~/.nvm/nvm.sh # Activate NVM
+            - nvm install 16.17.0 # Install Nodejs
+            - node -e "console.log('Running Node.js ' + process.version)" # Test nodejs is installed
+            - npm install # Install node dependencies
+            - npx mix --production # Compile js/css resources
+            - apt-get update && apt-get install -qy git zip curl libmcrypt-dev default-mysql-client libxml2-dev wget
+            #            - yes | pecl install mcrypt-1.0.3
+            - docker-php-ext-install pdo_mysql
+            - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+            - composer install --optimize-autoloader --no-interaction --prefer-dist
+            - composer dump-autoload
+            - php artisan migrate:fresh --env=testing --seed --force
+            - ./vendor/bin/phpunit --debug
+          services:
+            - mysql
+
+definitions:
+  services:
+    mysql:
+      image: mysql:8.0
+      variables:
+        MYSQL_DATABASE: 'myimagine_test'
+        MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        MYSQL_USER: 'superadmin'
+        MYSQL_PASSWORD: 'superadmin'
+
